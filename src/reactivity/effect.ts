@@ -1,3 +1,5 @@
+let activeEffect;
+let shouldTrack;
 class ReactiveEffect {
   private _fn: any
   private active: Boolean
@@ -40,6 +42,9 @@ export const track = (target, key) => {
   if (!activeEffect)
     return
 
+  // if (!shouldTrack)
+  //   return
+
   let depsMap = targetMap.get(target);
 
   if (!depsMap) {
@@ -70,8 +75,6 @@ export const trigger = (target, key) => {
     };
   };
 }
-
-let activeEffect;
 
 export const effect = (fn, options: any = {}) => {
   const _effect = new ReactiveEffect(fn, options.scheduler);
