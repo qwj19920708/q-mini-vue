@@ -15,8 +15,15 @@ class ReactiveEffect {
   }
 
   run() {
+    if (!this.active) {
+      return this._fn()
+    }
+
     activeEffect = this
-    return this._fn()
+    shouldTrack = true
+    const result = this._fn()
+    shouldTrack = false
+    return result
   }
 
   stop() {
@@ -38,12 +45,19 @@ const cleanupEffect = (effect) => {
 
 const targetMap = new Map();
 
-export const track = (target, key) => {
-  if (!activeEffect)
-    return
+export const isTracking = () => {
+  return activeEffect !== undefined && shouldTrack
+}
 
-  // if (!shouldTrack)
-  //   return
+export const trackEffect = (dep) => {
+  if (!dep.has(activeEffect))
+    dep.add(activeEffect)
+  activeEffect.deps.push(dep)
+}
+
+export const track = (target, key) => {
+  if (!isTracking())
+    return
 
   let depsMap = targetMap.get(target);
 
@@ -52,28 +66,31 @@ export const track = (target, key) => {
     targetMap.set(target, depsMap);
   }
 
-  let dep = depsMap.get(key);
+  let dep = depsMap.get(key)
 
   if (!dep) {
     dep = new Set();
     depsMap.set(key, dep);
   }
 
-  dep.add(activeEffect);
-  activeEffect.deps.push(dep);
+  trackEffect(dep)
+  
 }
 
-export const trigger = (target, key) => {
-  const depsMap = targetMap.get(target);
-  const dep = depsMap.get(key);
-
+export const triggerEffect = (dep) => {
   for(const effect of dep) {
     if (effect.scheduler) {
-      effect.scheduler();
+      effect.scheduler()
     } else {
-      effect.run();
-    };
-  };
+      effect.run()
+    }
+  }
+} 
+
+export const trigger = (target, key) => {
+  const depsMap = targetMap.get(target)
+  const dep = depsMap.get(key)
+  triggerEffect(dep)
 }
 
 export const effect = (fn, options: any = {}) => {
